@@ -36,7 +36,7 @@ function mount({ stage, svg, read }, value) {
   let pull = value;
 
   // Fitted with the bottom-left bottle at its farthest, so nothing leaves the frame at intensity 1.
-  const C = Cam(45, 0.5, 1.5), YT = BASE + 58 + 79.5, cx0 = M + PITCH / 2;
+  const C = Cam(45, 0.5, 1.7), YT = BASE + 58 + 79.5, cx0 = M + PITCH / 2;
   fit(C, [[0, 0, -PL], [W, 0, -PL], [0, D, -PL], [W, D, -PL], [0, 0, ZT], [W, 0, ZT], [0, D, ZT], [W, D, ZT],
     [cx0 - 7, YT, M], [cx0 - 7, YT, ZT - M]], 200, 166);
   const P = proj(C), front = facing(C);
@@ -172,6 +172,6 @@ hairline({
   means: "A wine rack, bottles lying necks-out: the one under the pointer slides out, and its neighbours follow a little, in turn.",
   rules: [1, 2, 5, 6],
   range: [28, 42, 58],
-  tour: [[174, 141], [155, 178], [212, 230], null],
+  tour: [[170, 137], [149, 179], [214, 238], null],
   mount,
 });

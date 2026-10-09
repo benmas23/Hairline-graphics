@@ -80,6 +80,11 @@ export function mount(el, figure, opts = {}) {
  */
 export function define(figure, tag = `hairline-${figure.name}`) {
   if (typeof window === "undefined" || !window.customElements || customElements.get(tag)) return;
+  // The same box as @lucasmarkes/hairline/react's <div>: a block as wide as its
+  // parent, 5:4, so a height left to fit comes out the same for every figure.
+  const sheet = document.createElement("style");
+  sheet.textContent = `${tag}{display:block;position:relative;aspect-ratio:5/4}`;
+  document.head.appendChild(sheet);
   class HairlineElement extends HTMLElement {
     static observedAttributes = ["intensity", "theme", "play", "label"];
     connectedCallback() {

@@ -15,26 +15,34 @@ Make a new code file (Assets → Code → New code file), replace everything in 
 with this, and drop the component on the canvas:
 
 ```tsx
-import "https://cdn.jsdelivr.net/gh/benmas23/hairline-graphics@v0.1.0/dist/hairline.js"
+import "https://cdn.jsdelivr.net/gh/benmas23/hairline-graphics@v0.2.0/dist/hairline.js"
 
 export default function Rack() {
-    // @ts-ignore: <hairline-rack> is a custom element
-    return <hairline-rack style={{ width: "100%", height: "100%" }} />
+    return (
+        <div style={{ position: "relative", aspectRatio: "5 / 4" }}>
+            {/* @ts-ignore: <hairline-rack> is a custom element */}
+            <hairline-rack style={{ position: "absolute", inset: 0 }} />
+        </div>
+    )
 }
 ```
 
-Give the frame a 5:4 shape (600 × 480, say).
+The outer `<div>` is the same box `@lucasmarkes/hairline/react` renders (as
+wide as its parent, 5:4), so with the height set to fit, the rack lines up with
+Lucas's figures, even before the script has loaded.
 
 ### With controls in Framer's panel
 
 ```tsx
 import { addPropertyControls, ControlType } from "framer"
-import "https://cdn.jsdelivr.net/gh/benmas23/hairline-graphics@v0.1.0/dist/hairline.js"
+import "https://cdn.jsdelivr.net/gh/benmas23/hairline-graphics@v0.2.0/dist/hairline.js"
 
 export default function Rack({ intensity = 0.5, play = false, theme = "auto" }) {
     return (
-        // @ts-ignore: <hairline-rack> is a custom element
-        <hairline-rack intensity={intensity} play={play ? "" : undefined} theme={theme} style={{ width: "100%", height: "100%" }} />
+        <div style={{ position: "relative", aspectRatio: "5 / 4" }}>
+            {/* @ts-ignore: <hairline-rack> is a custom element */}
+            <hairline-rack intensity={intensity} play={play ? "" : undefined} theme={theme} style={{ position: "absolute", inset: 0 }} />
+        </div>
     )
 }
 
@@ -66,7 +74,7 @@ pointer (`row 2·4`, `rest`).
 
 1. Make it with the `hairline-create` skill in `.claude/skills/` (`/hairline-create <idea>` in Claude Code), and save the figure as `figures/<name>.js`.
 2. `npm install`, then `npm run check` and `npm run build`.
-3. Commit, push, and tag a new version (`v0.2.0`); change the version in the Framer import to match.
+3. Commit, push, and tag a new version on GitHub (Releases → Draft a new release, `v0.3.0`); change the version in the Framer import to match.
 
 `figures/<name>.js` becomes `<hairline-<name>>` in `dist/hairline.js`; the one
 import gives you every figure. Open `demo.html` through a local server
@@ -75,7 +83,9 @@ import gives you every figure. Open `demo.html` through a local server
 ## Versions and caching
 
 jsDelivr caches a tag forever, and a branch (`@main`) for up to a day, so point
-Framer at a tag and bump it when you change something.
+Framer at a tag and bump it when you change something. A full commit hash
+(`@<40-character sha>`) works the same way as a tag, if you'd rather not make a
+release.
 
 ## Credits
 
