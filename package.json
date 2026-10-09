@@ -1,0 +1,15 @@
+{
+  "name": "hairline-graphics",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hairline figures as custom elements, for Framer or any page.",
+  "type": "module",
+  "main": "dist/hairline.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "for f in figures/*.js; do node .claude/skills/hairline-create/build.mjs \"$f\" /tmp/hairline-check.html >/dev/null && node .claude/skills/hairline-create/validate.mjs /tmp/hairline-check.html || exit 1; done"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
