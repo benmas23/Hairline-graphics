@@ -10,7 +10,7 @@ install and no copy of React of its own.
 | Contours | `<hairline-contours>` | A layered contour model: the land swells up around the pointer, and the contours re-form round it. |
 | Levelling | `<hairline-levelling>` | A layered contour model with a site graded into it: the land under the pointer is levelled into a flat pad, ready to build on. |
 | Rack | `<hairline-rack>` | A wine rack, bottles lying necks-out: the one under the pointer slides out, and its neighbours follow a little, in turn. |
-| Bricks | `<hairline-bricks>` | A tower of toy bricks, built as high as the pointer: the bricks up to it are placed, and the next one hovers over its spot. |
+| Bricks | `<hairline-bricks>` | A tower of toy bricks, drawn apart at rest: hovering builds it, each brick dropping onto the studs below, from the bottom up. |
 | Slow | `<hairline-slow>` | Lucas's Slow, with one change: the belt runs only while `play` is on. Off, it stands still until hovered. |
 
 ## Use it in Framer
