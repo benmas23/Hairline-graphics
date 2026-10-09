@@ -1,6 +1,6 @@
 {
   "name": "hairline-graphics",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Hairline figures as custom elements, for Framer or any page.",
   "type": "module",
