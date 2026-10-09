@@ -1,13 +1,14 @@
 /**
  * Contours: a laser-cut topographic model, each contour line a thin layer,
- * stacked on a board into twin summits, a ridge and a knoll. The pointer is
- * projected back onto the board, and the land swells up around it, falling
- * off with distance, so the layers re-form round the swell; it settles back
- * when the pointer leaves. The contour under the pointer takes the bright
- * stroke, or the summit's at rest. The slider is the swell's radius.
+ * stacked on a board into twin summits, a ridge and a knoll, with a square pad
+ * graded level into it: a site made ready to build on. The pointer is
+ * projected back onto the board, and the pad follows it, cut and filled level
+ * at the land's height there, so the layers re-form round its edges; at rest
+ * it sits on the slope of the tallest hill. The pad's own contour takes the
+ * bright stroke. The slider is the pad's size.
  *
- * The pattern: a continuous field, as Terrain. Springs for where the swell is
- * and how high, a falloff by distance, a hit test on the board (which never
+ * The pattern: a continuous field, as Terrain. Springs for where the pad is
+ * and its level, a falloff at its edge, a hit test on the board (which never
  * moves), and contours traced from the height field by marching squares.
  */
 const {
@@ -15,7 +16,8 @@ const {
   disposer, mk, pointer, put, register, solid,
 } = HL;
 
-const W = 150, G = 50, CS = W / G, K = 12, T = 3.9, PB = 5, AMP = 3.8;
+const W = 150, G = 50, CS = W / G, K = 12, T = 3.9, PB = 5, PAD = [62, 96];
+const ease = (t) => t * t * (3 - 2 * t);
 
 /** The land at rest, in levels: Gaussian hills [x, y, height, spread], held to zero at the board's edge. */
 const HILLS = [[48, 50, 7.6, 17], [84, 44, 6.6, 13], [110, 104, 9.4, 20], [38, 112, 4.8, 13], [75, 78, 2.8, 48], [128, 38, 3.4, 14], [20, 80, 2.6, 12], [96, 140, 2.8, 12]];
@@ -65,44 +67,38 @@ function trace(F, L) {
   return loops;
 }
 
-/** Whether world point p is inside a loop. */
-const inside = (loop, [x, y]) => {
-  let c = false;
-  for (let i = 0, j = loop.length - 1; i < loop.length; j = i++) {
-    const [xi, yi] = loop[i], [xj, yj] = loop[j];
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
-  }
-  return c;
-};
-
 function mount({ stage, svg, read }, value) {
   const bag = disposer();
   let R = value, over = null;
   const C = Cam(45, 0.5, 1.55);
   fit(C, [[-6, -6, -PB], [W + 6, W + 6, -PB], [W + 6, -6, -PB], [-6, W + 6, -PB], [W / 2, W / 2, (K + 1) * T]], 200, 170);
   const P = proj(C), front = facing(C);
-  const bx = spring(0), by = spring(0), amp = spring(0, { eps: 0.004 });
+  /** The pad's level at world point q: half a layer above the layer the land is on there. */
+  const level = (q) => Math.floor(land(...q)) + 0.5;
+  const bx = spring(PAD[0]), by = spring(PAD[1]), ph = spring(level(PAD), { eps: 0.004 });
   const F = new Float32Array(BASE.length);
 
   // The board, then one group per level, bottom up: higher layers sit inside lower ones, so they cover them.
   const g = mk("g", {}, svg);
-  const [br, bi] = rings(-6, -6, W + 6, W + 6, 8, 2);
-  put(solid(g), prism(P, front, br, bi, -PB, 0));
+  const [br, bi] = rings(-6, -6, W + 6, W + 6, 8, 2), board = solid(g);
+  put(board, prism(P, front, br, bi, -PB, 0));
   const levels = [];
   for (let k = 1; k <= K; k++) {
     const lg = mk("g", {}, g);
-    levels.push({ k, band: mk("path", { class: "fo" }, lg), foot: mk("path", { class: "nf lo" }, lg), top: mk("path", { class: "sil" }, lg), hi: mk("path", { class: "nf hi" }, lg), loops: [] });
+    levels.push({ k, g: lg, band: mk("path", { class: "fo" }, lg), foot: mk("path", { class: "nf lo" }, lg), top: mk("path", { class: "sil" }, lg), loops: [] });
   }
-  const peak = [108, 106];
-
-  /** Traces the field as it is now and redraws every layer; the bright stroke goes to the loop holding `mark`, at `level` or the land's height there now. */
-  function draw(mark, level) {
-    const r2 = 2 * R * R;
+  // The pad: a level platform half a layer thick, its edge the bright mark. It is moved in the paint order to sit on its own layer.
+  const pad = solid(g);
+  pad.sil.classList.add("hi");
+  let padAt = -1;
+  /** Traces the field as it is now, redraws every layer, and sets the pad on the one it is cut into. */
+  function draw() {
     for (let j = 0, n = 0; j <= G; j++) for (let i = 0; i <= G; i++, n++) {
-      const d2 = (i * CS - bx.x) ** 2 + (j * CS - by.x) ** 2;
-      F[n] = Math.min(K + 0.6, BASE[n] + amp.x * Math.exp(-d2 / r2) * edge(i * CS, j * CS));
+      // a rounded square: how far the point is from the pad's middle, in pad half-widths
+      const x = i * CS, y = j * CS, q = (((x - bx.x) / R) ** 4 + ((y - by.x) / R) ** 4) ** 0.25;
+      const w = (1 - ease(clamp((q - 0.8) / 0.55, 0, 1))) * edge(x, y);
+      F[n] = Math.min(K + 0.6, BASE[n] + w * (ph.x - BASE[n]));
     }
-    const lit = level ?? clamp(Math.floor(F[Math.round(mark[1] / CS) * (G + 1) + Math.round(mark[0] / CS)]), 0, K);
     for (const lv of levels) {
       lv.loops = trace(F, lv.k);
       const z1 = lv.k * T, z0 = z1 - T, ring = (l, z) => l.map(([x, y]) => P(x, y, z));
@@ -113,29 +109,31 @@ function mount({ stage, svg, read }, value) {
         const a = ring(l, z1), lo = a.reduce((m, p) => (p[0] < m[0] ? p : m)), hi = a.reduce((m, p) => (p[0] > m[0] ? p : m));
         return poly(a) + seg(lo, [lo[0], lo[1] + (P(0, 0, 0)[1] - P(0, 0, T)[1])]) + seg(hi, [hi[0], hi[1] + (P(0, 0, 0)[1] - P(0, 0, T)[1])]);
       }).join(""));
-      const own = lv.k === lit ? lv.loops.find((l) => inside(l, mark)) : null;
-      lv.hi.setAttribute("d", own ? poly(ring(own, z1)) : "");
     }
+    const k = clamp(Math.floor(ph.x), 0, K), h = R * 0.8;
+    if (k !== padAt) { padAt = k; (k ? levels[k - 1].g : board.g).after(pad.g); }
+    const [pr2, pi2] = rings(bx.x - h, by.x - h, bx.x + h, by.x + h, h * 0.35, 1.2);
+    put(pad, prism(P, front, pr2, pi2, k * T, ph.x * T));
   }
 
   const B = register(stage, (dt) => {
-    let m = stepS(amp, dt);
+    let m = stepS(ph, dt);
     if (stepS(bx, dt)) m = true;
     if (stepS(by, dt)) m = true;
-    draw(over || peak, over ? null : clamp(Math.floor(land(...peak)), 0, K));
+    draw();
     return m;
   });
   bag.add(B.unregister);
 
+  /** Moves the pad to world point q and grades it level at the land's height there. */
+  const site = (q) => { bx.t = q[0]; by.t = q[1]; ph.t = level(q); B.wake(); };
   bag.add(pointer(stage, {
     move: (p) => {
       over = unproj(C, p[0], p[1], 0).map((v) => clamp(v, 0, W));
-      if (amp.x < 0.05) { bx.x = over[0]; by.x = over[1]; }
-      bx.t = over[0]; by.t = over[1]; amp.t = AMP;
-      read.textContent = `${Math.round((land(...over) + AMP * edge(...over)) * 100)} m`;
-      B.wake();
+      site(over);
+      read.textContent = `pad ${Math.round(level(over) * 100)} m`;
     },
-    leave: () => { over = null; amp.t = 0; read.textContent = "rest"; B.wake(); },
+    leave: () => { over = null; site(PAD); read.textContent = "rest"; },
   }));
   bag.add(() => svg.replaceChildren());
 
@@ -147,9 +145,9 @@ function mount({ stage, svg, read }, value) {
 
 hairline({
   name: "contours",
-  means: "A layered contour model: the land swells up around the pointer, and the contours re-form round it.",
+  means: "A layered contour model with a site graded into it: the land under the pointer is levelled into a flat pad, ready to build on.",
   rules: [1, 3, 5, 9],
-  range: [12, 20, 32],
-  tour: [[119, 163], [178, 175], [224, 137], null],
+  range: [14, 20, 28],
+  tour: [[220, 141], [204, 219], [176, 198], null],
   mount,
 });
