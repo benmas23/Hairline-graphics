@@ -8,6 +8,7 @@ install and no copy of React of its own.
 | Figure | Element | What it does |
 | --- | --- | --- |
 | Rack | `<hairline-rack>` | A wine rack, bottles lying necks-out: the one under the pointer slides out, and its neighbours follow a little, in turn. |
+| Slow | `<hairline-slow>` | Lucas's Slow, with one change: the belt runs only while `play` is on. Off, it stands still until hovered. |
 
 ## Use it in Framer
 
@@ -69,6 +70,19 @@ fill of the solids, which should match your background), `--hairline-hi`,
 
 The element fires a `read` event whose `detail` is the caption under the
 pointer (`row 2·4`, `rest`).
+
+## Lucas's figures, changed
+
+`ported/` holds figures copied from `@lucasmarkes/hairline` to change how they
+behave; the rest of his figures are best used from his package as they are.
+
+- `ported/slow.js`: his Slow belt moves all the time, and `play` only walks its
+  tour. Here the belt runs only while the figure plays; not played, it rests as
+  his does under reduced motion.
+
+A figure that moves on its own can return `play(on)` from `mount` and read
+`playing` from the object `mount` is given; the host calls it when `play`
+changes.
 
 ## Adding a figure
 

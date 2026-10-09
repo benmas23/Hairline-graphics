@@ -9,13 +9,14 @@
 import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { build } from "esbuild";
 
-const files = readdirSync("figures").filter((f) => f.endsWith(".js")).sort();
+// figures/ holds my own figures; ported/ holds Lucas's, copied to change how they behave.
+const files = ["figures", "ported"].flatMap((d) => readdirSync(d).filter((f) => f.endsWith(".js")).map((f) => `${d}/${f}`)).sort((a, b) => a.split("/")[1].localeCompare(b.split("/")[1]));
 const entry = [
   'import { define, load, mount } from "./host.js";',
   "export const figures = {};",
   ...files.map((f) => {
-    const src = readFileSync(`figures/${f}`, "utf8");
-    return `figures[${JSON.stringify(f.slice(0, -3))}] = load((HL, hairline) => {\n${src}\n});`;
+    const src = readFileSync(f, "utf8"), name = f.split("/")[1].slice(0, -3);
+    return `figures[${JSON.stringify(name)}] = load((HL, hairline) => {\n${src}\n});`;
   }),
   "for (const f of Object.values(figures)) define(f);",
   "export { define, mount };",
@@ -33,4 +34,4 @@ await build({
   legalComments: "none",
   banner: { js: "/* hairline-graphics · figures on the engine of @lucasmarkes/hairline (MIT, Lucas Marques) */" },
 });
-console.log(`dist/hairline.js: ${files.map((f) => `<hairline-${f.slice(0, -3)}>`).join(" ")}`);
+console.log(`dist/hairline.js: ${files.map((f) => `<hairline-${f.split("/")[1].slice(0, -3)}>`).join(" ")}`);

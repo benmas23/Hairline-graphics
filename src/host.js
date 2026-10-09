@@ -42,17 +42,19 @@ export function mount(el, figure, opts = {}) {
     set textContent(v) { text = v == null ? "" : String(v); live.textContent = text; onRead?.(text); },
   };
 
-  let intensity = opts.intensity ?? 0.5, tour = null;
-  const handle = figure.mount({ stage: el, svg, read }, value(figure.range, intensity));
-  if (text === null) read.textContent = "rest";
-
+  let intensity = opts.intensity ?? 0.5, tour = null, handle = null;
+  /* Play walks the tour; a figure that moves on its own (Slow's belt) also gets play(on), and runs only while played. */
   const setPlay = (on) => {
     if (on && !tour) tour = HL.tour(el, figure.tour || HL.LAP);
     else if (!on && tour) { tour.stop(); tour = null; }
+    handle?.play?.(on);
   };
   const setTheme = (t) => (t === "light" || t === "dark" ? el.setAttribute("data-hairline-theme", t) : el.removeAttribute("data-hairline-theme"));
   setTheme(opts.theme);
+  /* the tour registers before the figure, as in @lucasmarkes/hairline, so in a frame the ghost moves and then the figure answers */
   setPlay(opts.play === true);
+  handle = figure.mount({ stage: el, svg, read, playing: opts.play === true }, value(figure.range, intensity));
+  if (text === null) read.textContent = "rest";
 
   return {
     update(o) {
