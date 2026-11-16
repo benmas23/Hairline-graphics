@@ -11,6 +11,7 @@ install and no copy of React of its own.
 | Levelling | `<hairline-levelling>` | A layered contour model with a site graded into it: the land under the pointer is levelled into a flat pad, ready to build on. |
 | Rack | `<hairline-rack>` | A wine rack, bottles lying necks-out: the one under the pointer slides out, and its neighbours follow a little, in turn. |
 | Bricks | `<hairline-bricks>` | A tower of toy bricks, apart and staggered at rest: the pointer's height builds it, each course settling onto the studs below. |
+| Strata | `<hairline-strata>` | Five tiers stacked as a stepped pyramid, held apart on dashed guides: the pointer's x opens the stack, its height lifts a tier clear. |
 | Slow | `<hairline-slow>` | Lucas's Slow, with one change: the belt runs only while `play` is on. Off, it stands still until hovered. |
 
 ## Use it in Framer
