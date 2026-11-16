@@ -25,8 +25,8 @@ function mount({ stage, svg, read }, value) {
   const lifts = Array.from({ length: N }, (_, i) => tween(i === PICK ? LIFT : 0));
 
   const C = Cam(45, 0.5, 1.72);
-  const top = N * (T + 22) + LIFT;
-  fit(C, [[-50, -50, 0], [50, 50, 0], [50, -50, 0], [-50, 50, 0], [-20, -20, top], [20, 20, top]], 200, 166);
+  const top = (N - 1) * (T + GR) + LIFT + T; // the rest pose is what's centred; the widest pose still fits above it
+  fit(C, [[-50, -50, 0], [50, 50, 0], [50, -50, 0], [-50, 50, 0], [-20, -20, top], [20, 20, top]], 200, 182);
   const P = proj(C), front = facing(C);
 
   const g = mk("g", {}, svg);
