@@ -3,7 +3,7 @@
  * the pointer rise out of the board and turn a little, the nearest highest,
  * each over its own empty slot with dashed guides dropping to it; the swell
  * follows the pointer, and pieces settle home behind it. Every piece has a
- * border line inset on its face and four dots at its heart. At rest one piece
+ * border line inset on its face. At rest one piece
  * stands lifted, as if about to be placed. The slider is the swell's reach.
  *
  * Seated pieces paint all their walls before any of their faces, so the board
@@ -11,7 +11,7 @@
  */
 const {
   Cam, clamp, fillet, fit, poly, prism, proj, rad, rings, seg, unproj,
-  spring, stepS, disposer, mk, place, pointer, put, register, solid, facing,
+  spring, stepS, disposer, mk, pointer, put, register, solid, facing,
 } = HL;
 
 const N = 4, A = 26, HF = A / 2, T = 4, H = 24, IN = 1.5;
@@ -76,7 +76,6 @@ function mount({ stage, svg, read }, value) {
       guide: mk("path", { class: "nf dash" }, w), foot: mk("path", { class: "sil" }, w), sides: mk("path", { class: "nf sil" }, w),
       fills: [1, 2, 3].map(() => mk("path", { class: "fo" }, w)),
       top: mk("path", { class: "sil" }, t), border: mk("path", { class: "nf lo" }, t),
-      dots: [0, 1, 2, 3].map(() => mk("circle", { r: 0.95, class: "dot off" }, t)),
       sp: spring(0), last: NaN,
     };
     pieces.push(p);
@@ -100,7 +99,6 @@ function mount({ stage, svg, read }, value) {
       p.fills.forEach((el, q) => el.setAttribute("d", poly(p.shape.map((pt) => W(pt, z0 + (T * (q + 1)) / 4)))));
       p.top.setAttribute("d", poly(hi));
       p.border.setAttribute("d", poly(p.inset.map((q) => W(q, z0 + T))));
-      p.dots.forEach((el, q) => place(el, W([((q % 2) - 0.5) * 3.4, (Math.floor(q / 2) - 0.5) * 3.4], z0 + T)));
       p.guide.setAttribute("d", z0 > 1 ? [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => seg(P(p.seat[0] + a * HF, p.seat[1] + b * HF, 0), W([a * HF, b * HF], z0))).join("") : "");
     });
     // seated: walls, then faces, as one surface; lifted: whole, after the board, back to front
@@ -126,10 +124,7 @@ function mount({ stage, svg, read }, value) {
       p.sp.t = f < 0.05 ? 0 : H * k * f;
       if (d < nd) { nd = d; near = p; }
     });
-    pieces.forEach((p) => {
-      p.top.classList.toggle("hi", p === near);
-      p.dots.forEach((el) => el.setAttribute("class", p === near ? "dot m" : "dot off"));
-    });
+    pieces.forEach((p) => p.top.classList.toggle("hi", p === near));
     return near;
   }
 
