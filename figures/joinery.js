@@ -1,148 +1,163 @@
 /**
- * Joinery: four interlocking pieces of one square, three of them loose and
- * turned on the ground around a dashed outline of where they belong, one
- * already seated. Hovering anywhere assembles it: the loose pieces slide home
- * and square up on the 700ms curve, staggered out from the piece nearest the
- * pointer, and leaving takes it apart again. The slider is the stagger, in ms.
+ * Joinery: a sixteen-piece puzzle, assembled in a shallow tray. Pieces near
+ * the pointer rise out of the board and turn a little, the nearest highest,
+ * each over its own empty slot with dashed guides dropping to it; the swell
+ * follows the pointer, and pieces settle home behind it. Every piece has a
+ * border line inset on its face and four dots at its heart. At rest one piece
+ * stands lifted, as if about to be placed. The slider is the swell's reach.
  *
- * Walls are painted for every piece before any top face, so once assembled
- * the four tops make one surface and the joints' walls stay hidden.
+ * Seated pieces paint all their walls before any of their faces, so the board
+ * reads as one surface; lifted pieces paint whole, after it, back to front.
  */
 const {
-  Cam, fillet, fit, poly, proj, rad, seg, unproj,
-  tween, tset, tval, tdone, disposer, mk, pointer, register,
+  Cam, clamp, fillet, fit, poly, prism, proj, rad, rings, seg, unproj,
+  spring, stepS, disposer, mk, place, pointer, put, register, solid, facing,
 } = HL;
 
-const A = 44, HF = A / 2, T = 4.5;
-// i, j: the piece's place in the 2 × 2; gap and yaw: how far out and how turned it rests
-const PIECES = [
-  { i: 0, j: 0, gap: 17, yaw: 11 },
-  { i: 1, j: 0, gap: 27, yaw: -15 },
-  { i: 0, j: 1, gap: 0, yaw: 0 },
-  { i: 1, j: 1, gap: 21, yaw: 8 },
-];
-const SEATED = 2;
+const N = 4, A = 26, HF = A / 2, T = 4, H = 24, IN = 1.5;
+const REST = [0.5 * A, -0.5 * A + 0.2, 0.62]; // a ground point and a height: one piece lifted, its neighbours stirring
+const seam = (a, b) => ((a + b) % 2 ? 1 : -1); // tab or socket across each seam, alternating
 
-/** One edge from p to q, outward normal n; kind 1 is a tab, -1 a socket, 0 flat. */
-function edge(p, q, n, kind, out, outer) {
+/** One edge from p to q, outward normal n; kind 1 a tab, -1 a socket, 0 flat. */
+function edge(p, q, n, kind, out, r) {
   const at = (t, d) => [p[0] + (q[0] - p[0]) * t + n[0] * d * A * kind, p[1] + (q[1] - p[1]) * t + n[1] * d * A * kind];
-  out.push({ pt: p, r: outer(p) ? 3 : 0.01 }); // only the square's own corners are round, so the seams close flush
+  out.push({ pt: p, r });
   if (!kind) return;
-  out.push({ pt: at(0.36, 0), r: 1.2 }, { pt: at(0.42, 0.07), r: 0.6 });
+  out.push({ pt: at(0.36, 0), r: 1 }, { pt: at(0.42, 0.07), r: 0.5 });
   for (let a = 232; a >= -52; a -= 24) out.push({ pt: at(0.5 + 0.12 * Math.cos(rad(a)), 0.17 + 0.12 * Math.sin(rad(a))), r: 0 });
-  out.push({ pt: at(0.58, 0.07), r: 0.6 }, { pt: at(0.64, 0), r: 1.2 });
+  out.push({ pt: at(0.58, 0.07), r: 0.5 }, { pt: at(0.64, 0), r: 1 });
 }
 
-/** The piece's outline in its own frame, centred on the origin. */
-function outline({ i, j }) {
-  const col = j === 0 ? 1 : -1, row = i === 1 ? 1 : -1; // the seams: tab or socket, matched across each
-  const kinds = {
-    top: j === 1 ? -row : 0, right: i === 0 ? col : 0,
-    bottom: j === 0 ? row : 0, left: i === 1 ? -col : 0,
+/** Piece (i, j)'s outline and its inset border, centred on the origin. Only the board's own corners are round. */
+function shapes(i, j) {
+  const k = {
+    top: j > 0 ? -seam(i, j - 1) : 0, bottom: j < N - 1 ? seam(i, j) : 0,
+    left: i > 0 ? -seam(i - 1, j + 7) : 0, right: i < N - 1 ? seam(i, j + 7) : 0,
   };
-  const out = [], sx = i ? 1 : -1, sy = j ? 1 : -1;
-  const outer = (p) => Math.sign(p[0]) === sx && Math.sign(p[1]) === sy;
-  edge([-HF, -HF], [HF, -HF], [0, -1], kinds.top, out, outer);
-  edge([HF, -HF], [HF, HF], [1, 0], kinds.right, out, outer);
-  edge([HF, HF], [-HF, HF], [0, 1], kinds.bottom, out, outer);
-  edge([-HF, HF], [-HF, -HF], [-1, 0], kinds.left, out, outer);
-  return fillet(out.map((o) => o.pt), out.map((o) => o.r || 0.01), 3);
+  const round = (p) => {
+    const cx = i + (p[0] > 0 ? 1 : 0), cy = j + (p[1] > 0 ? 1 : 0);
+    return (cx === 0 || cx === N) && (cy === 0 || cy === N) ? 2.5 : 0.01;
+  };
+  const out = [];
+  edge([-HF, -HF], [HF, -HF], [0, -1], k.top, out, round([-HF, -HF]));
+  edge([HF, -HF], [HF, HF], [1, 0], k.right, out, round([HF, -HF]));
+  edge([HF, HF], [-HF, HF], [0, 1], k.bottom, out, round([HF, HF]));
+  edge([-HF, HF], [-HF, -HF], [-1, 0], k.left, out, round([-HF, HF]));
+  const shape = fillet(out.map((o) => o.pt), out.map((o) => o.r || 0.01), 3);
+  // the border: every point moved IN along the outline's inward normal
+  const m = shape.length, inset = shape.map((p, q) => {
+    const a = shape[(q + m - 1) % m], b = shape[(q + 1) % m], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+    return [p[0] - (dy / l) * IN, p[1] + (dx / l) * IN];
+  });
+  return { shape, inset };
 }
 
 function mount({ stage, svg, read }, value) {
   const bag = disposer();
-  let stag = value;
+  let reach = value;
 
-  const C = Cam(45, 0.5, 1.95);
-  const far = A + 20;
-  fit(C, [[-far, -far, 0], [far, far, 0], [far, -far, 0], [-far, far, T]], 200, 170);
-  const P = proj(C);
+  const C = Cam(45, 0.5, 1.62);
+  const E = N * HF + 7;
+  fit(C, [[-E, -E, -5], [E, E, -5], [E, -E, -5], [-E, E, -5], [-E, -E, H + T]], 200, 166);
+  const P = proj(C), front = facing(C);
 
   const g = mk("g", {}, svg);
-  mk("path", { class: "nf dash", d: poly(fillet([[-A, -A], [A, -A], [A, A], [-A, A]], [3, 3, 3, 3]).map((p) => P(p[0], p[1], 0))) }, g);
-  // every piece's walls first, every top face after: assembled, the tops tile one surface and hide the joints' walls
-  const walls = mk("g", {}, g), tops = mk("g", {}, g);
+  const [tr, ti] = rings(-E, -E, E, E, 6, 2);
+  put(solid(g), prism(P, front, tr, ti, -5, 0));
+  const slots = mk("g", {}, g), wallsL = mk("g", {}, g), topsL = mk("g", {}, g), liftL = mk("g", {}, g);
 
-  const pieces = PIECES.map((pc, k) => {
-    const grp = mk("g", {}, walls);
-    const foot = mk("path", { class: "sil" }, grp);
-    const sides = mk("path", { class: "nf sil" }, grp);
-    const body = [1, 2, 3].map(() => mk("path", { class: "fo" }, grp));
-    const top = mk("path", { class: "sil" }, tops);
-    const seat = [(pc.i - 0.5) * A, (pc.j - 0.5) * A];
-    const len = Math.hypot(seat[0], seat[1]);
-    return { ...pc, k, grp, foot, sides, body, top, seat, dir: [seat[0] / len, seat[1] / len], shape: outline(pc), tw: tween(pc.gap), last: NaN };
-  });
+  const pieces = [];
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const { shape, inset } = shapes(i, j), seat = [(i - N / 2 + 0.5) * A, (j - N / 2 + 0.5) * A];
+    mk("path", { class: "nf lo", d: poly(shape.map(([u, v]) => P(seat[0] + u, seat[1] + v, 0))) }, slots);
+    const w = mk("g", {}, wallsL), t = mk("g", {}, topsL);
+    const p = {
+      i, j, shape, inset, seat, w, t, yaw: ((i * 7 + j * 13) % 5 - 2) * 6 + 3,
+      guide: mk("path", { class: "nf dash" }, w), foot: mk("path", { class: "sil" }, w), sides: mk("path", { class: "nf sil" }, w),
+      fills: [1, 2, 3].map(() => mk("path", { class: "fo" }, w)),
+      top: mk("path", { class: "sil" }, t), border: mk("path", { class: "nf lo" }, t),
+      dots: [0, 1, 2, 3].map(() => mk("circle", { r: 0.95, class: "dot off" }, t)),
+      sp: spring(0), last: NaN,
+    };
+    pieces.push(p);
+  }
 
-  function draw(now) {
+  function draw() {
     pieces.forEach((p) => {
-      const gp = tval(p.tw, now);
-      if (Math.abs(gp - p.last) < 1e-3) return;
-      p.last = gp;
-      const yaw = rad(p.gap ? p.yaw * (gp / p.gap) : 0), c = Math.cos(yaw), s = Math.sin(yaw);
-      const cx = p.seat[0] + p.dir[0] * gp, cy = p.seat[1] + p.dir[1] * gp;
-      const ring = (z) => p.shape.map(([u, v]) => P(cx + u * c - v * s, cy + u * s + v * c, z));
-      const lo = ring(0), hi = ring(T), n = lo.length;
+      const z0 = p.sp.x;
+      if (Math.abs(z0 - p.last) < 1e-3) return;
+      p.last = z0;
+      const yaw = rad(p.yaw * clamp(z0 / H, 0, 1)), c = Math.cos(yaw), s = Math.sin(yaw);
+      const W = ([u, v], z) => P(p.seat[0] + u * c - v * s, p.seat[1] + u * s + v * c, z);
+      const lo = p.shape.map((q) => W(q, z0)), hi = p.shape.map((q) => W(q, z0 + T)), n = lo.length;
       p.foot.setAttribute("d", poly(lo));
-      // the wall's silhouette: an upright line wherever the outline turns back on screen
       let d = "";
       for (let m = 0; m < n; m++) {
         const a = lo[(m + n - 1) % n][0], b = lo[m][0], e = lo[(m + 1) % n][0];
         if ((b - a) * (e - b) < 0) d += seg(lo[m], hi[m]);
       }
       p.sides.setAttribute("d", d);
-      p.body.forEach((el, q) => el.setAttribute("d", poly(ring((T * (q + 1)) / 4))));
+      p.fills.forEach((el, q) => el.setAttribute("d", poly(p.shape.map((pt) => W(pt, z0 + (T * (q + 1)) / 4)))));
       p.top.setAttribute("d", poly(hi));
-      p.depth = cx + cy;
+      p.border.setAttribute("d", poly(p.inset.map((q) => W(q, z0 + T))));
+      p.dots.forEach((el, q) => place(el, W([((q % 2) - 0.5) * 3.4, (Math.floor(q / 2) - 0.5) * 3.4], z0 + T)));
+      p.guide.setAttribute("d", z0 > 1 ? [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => seg(P(p.seat[0] + a * HF, p.seat[1] + b * HF, 0), W([a * HF, b * HF], z0))).join("") : "");
     });
-    // back to front by where each piece is now: the groups move, nothing is redrawn
-    pieces.slice().sort((a, b) => a.depth - b.depth).forEach((p) => { walls.appendChild(p.grp); tops.appendChild(p.top); });
+    // seated: walls, then faces, as one surface; lifted: whole, after the board, back to front
+    pieces.slice().sort((a, b) => a.seat[0] + a.seat[1] - b.seat[0] - b.seat[1]).forEach((p) => {
+      if (p.sp.x > 0.25) { liftL.appendChild(p.w); liftL.appendChild(p.t); }
+      else { wallsL.appendChild(p.w); topsL.appendChild(p.t); }
+    });
   }
 
-  const B = register(stage, (_dt, now) => {
-    draw(now);
-    return pieces.some((p) => !tdone(p.tw, now));
+  const B = register(stage, (dt) => {
+    let moving = false;
+    pieces.forEach((p) => { if (stepS(p.sp, dt)) moving = true; });
+    draw();
+    return moving;
   });
   bag.add(B.unregister);
 
-  let on = null;
-  /** Hovering anywhere assembles it, the piece nearest the pointer first; leaving takes it apart from the one let go. */
+  /** The swell, centred on a ground point: height falls with distance to each seat, to nothing past the reach. */
+  function swell(wx, wy, k) {
+    let near = null, nd = Infinity;
+    pieces.forEach((p) => {
+      const d = Math.hypot(wx - p.seat[0], wy - p.seat[1]), f = Math.exp(-2.2 * (d / reach) ** 2);
+      p.sp.t = f < 0.05 ? 0 : H * k * f;
+      if (d < nd) { nd = d; near = p; }
+    });
+    pieces.forEach((p) => {
+      p.top.classList.toggle("hi", p === near);
+      p.dots.forEach((el) => el.setAttribute("class", p === near ? "dot m" : "dot off"));
+    });
+    return near;
+  }
+
   function aim(pt) {
-    const now = performance.now();
-    let near = SEATED;
-    if (pt) {
-      const [wx, wy] = unproj(C, pt[0], pt[1], 0);
-      let nd = Infinity;
-      pieces.forEach((p) => { const d = Math.hypot(wx - p.seat[0], wy - p.seat[1]); if (d < nd) { nd = d; near = p.k; } });
-    }
-    const join = !!pt, from = join ? near : on ?? SEATED;
-    if (join !== (on !== null)) {
-      // the stagger runs outward from the piece the pointer is nearest, by place in the 2 × 2
-      const pa = pieces[from];
-      pieces.forEach((p) => tset(p.tw, join ? 0 : p.gap, now, (Math.abs(p.i - pa.i) + Math.abs(p.j - pa.j)) * stag));
-    }
-    on = join ? near : null;
-    pieces.forEach((p) => p.top.classList.toggle("hi", p.k === near));
-    read.textContent = join ? "4 of 4" : "rest";
+    if (!pt) { swell(REST[0], REST[1], REST[2]); read.textContent = "rest"; B.wake(); return; }
+    const [wx, wy] = unproj(C, pt[0], pt[1], 0);
+    if (Math.max(Math.abs(wx), Math.abs(wy)) > N * HF + 10) { aim(null); return; } // off the board is rest
+    const near = swell(wx, wy, 1);
+    read.textContent = `piece ${near.j + 1}·${near.i + 1}`;
     B.wake();
   }
 
-  draw(performance.now());
   aim(null);
+  draw();
   bag.add(pointer(stage, { move: aim, leave: () => aim(null) }));
   bag.add(() => svg.replaceChildren());
 
   return {
-    set: (v) => { stag = v; },
+    set: (v) => { reach = v; },
     destroy: bag.dispose,
   };
 }
 
 hairline({
   name: "joinery",
-  means: "Four interlocking pieces of one square, one seated: hover and the rest slide home, nearest first.",
-  rules: [2, 5, 6, 8],
-  range: [0, 70, 150],
-  tour: [[250, 120], [205, 215], [200, 170], null],
+  means: "A sixteen-piece puzzle in a tray: the pieces near the pointer rise out of their slots, and settle home behind it.",
+  rules: [1, 3, 5, 6],
+  range: [16, 26, 40],
+  tour: [[170, 152], [230, 212], [260, 167], null],
   mount,
 });
