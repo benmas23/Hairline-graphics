@@ -12,7 +12,7 @@ install and no copy of React of its own.
 | Rack | `<hairline-rack>` | A wine rack, bottles lying necks-out: the one under the pointer slides out, and its neighbours follow a little, in turn. |
 | Bricks | `<hairline-bricks>` | A tower of toy bricks, apart and staggered at rest: the pointer's height builds it, each course settling onto the studs below. |
 | Strata | `<hairline-strata>` | Five tiers stacked as a stepped pyramid, held apart on dashed guides: the pointer's x opens the stack, its height lifts a tier clear. |
-| Groundwork | `<hairline-groundwork>` | An empty gridded site plate: hover it and a datacenter campus rises (wind turbine, walled substation, power block with stacks, two data halls), staggered out from the pointer. |
+| Groundwork | `<hairline-groundwork>` | An empty, bordered site plate: hover it and a datacenter campus rises (wind turbine, substation pad with lines, power block with hollow stacks, two roofed data halls, a tank), staggered out from the pointer. |
 | Joinery | `<hairline-joinery>` | A sixteen-piece puzzle in a tray: pieces near the pointer rise out of their slots, turning, with dashed guides to where they belong, and settle home behind it. |
 | Slow | `<hairline-slow>` | Lucas's Slow, with one change: the belt runs only while `play` is on. Off, it stands still until hovered. |
 
